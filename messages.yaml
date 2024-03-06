@@ -5,9 +5,9 @@ info:
   description: |
     The Trust and Safety API specifies two message formats.
     
-    One is for sending a `ContentModerationRequest`.  This message will be sent to an Amazon SQS queue from the FanApp backend.  It will then be consumed into the Trust and Safety service with content to be analysed by the Trust and Safety provider (currently ActiveFence).
+    One is for sending a `ContentModerationRequest`.  This message will be sent to a Requests Amazon SQS queue from the FanApp backend.  It will then be consumed into the Trust and Safety service with content to be analysed by the Trust and Safety provider (currently ActiveFence).
 
-    The other is a `ContentModerationResponse` message.  This is returned from the Trust and Safety service and queued for parsing by the FanApp backend once a decision has been made about an item of submitted content or an issue relating to user behaviour.
+    The other is a `ContentModerationResponse` message.  This is returned from the Trust and Safety service and queued on a Responses SQS queue for parsing by the FanApp backend once a decision has been made about an item of submitted content or an issue relating to user behaviour.
 channels:
   contentModerationRequest:
     address: contentModerationRequest
