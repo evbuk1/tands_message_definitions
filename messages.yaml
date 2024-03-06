@@ -1,0 +1,118 @@
+asyncapi: 3.0.0
+info:
+  title: Warner Trust and Safety Service
+  version: 1.0.0
+  description: |
+    The Trust and Safety API specifies two message formats.
+    
+    One is for sending a `ContentModerationRequest`.  This message will be sent to an Amazon SQS queue from the FanApp backend.  It will then be consumed into the Trust and Safety service with content to be analysed by the Trust and Safety provider (currently ActiveFence).
+
+    The other is a `ContentModerationResponse` message.  This is returned from the Trust and Safety service and queued for parsing by the FanApp backend once a decision has been made about an item of submitted content or an issue relating to user behaviour.
+channels:
+  contentModerationRequest:
+    address: contentModerationRequest
+    messages:
+      emitContentModerationRequest.message:
+        $ref: '#/components/messages/ContentModerationRequest'
+  contentModerationResponse:
+    address: contentModerationResponse
+    messages:
+      consumeContentModerationResponse.message:
+        $ref: '#/components/messages/ContentModerationResponse'
+operations:
+  emitContentModerationRequest:
+    action: send
+    channel:
+      $ref: '#/channels/contentModerationRequest'
+    messages:
+      - $ref: '#/channels/contentModerationRequest/messages/emitContentModerationRequest.message'
+  consumeContentModerationResponse:
+    action: receive
+    channel:
+      $ref: '#/channels/contentModerationResponse'
+    messages:
+      - $ref: '#/channels/contentModerationResponse/messages/consumeContentModerationResponse.message'
+components:
+  messages:
+    ContentModerationRequest:
+      name: contentModerationRequest
+      title: A request for content moderation processing made from FanApp to the Trust and Safety service.  This message is queued for processing by FanApp on the ContentModerationRequest SQS message queue.
+      summary: Sends content for moderation into the Trust and Safety service
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/contentModerationRequestPayload'
+    ContentModerationResponse:
+      name: contentModerationResponse
+      title: A response message which is queued by Trust and Safety on the ContentModerationResponse SQS queue.  The message payload contains the details of an ActiveFence decision about a previously-submitted item of content.
+      summary: Provides FanApp backend with the result of content moderation analysis on an item of content.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/contentModerationResponsePayload'
+  schemas:
+    contentModerationRequestPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - item_id
+        - item_class
+        - media_type
+        - provider_content_id
+        - content
+        - user_id
+        - created_at
+      properties:
+        item_id:
+          type: string
+          description: The FanApp database id of the content being uploaded
+        item_class:
+          type: string
+          description: For example - `Comment` or `Post`. `content_id` and `content_class` will be used for creating the unique id of the content in ActiveFence.  This could be the database table name from FanApp backend that the content ID relates to, so that it facilitates updating the correct item and row when a response is returned.
+        media_type:
+          type: string
+          enum: ['text', 'image']
+          description: The format of the item which dictates what ActiveFence endpoint the moderation request will be sent to
+        provider_content_id:
+          type: string
+          description: Combination of `media_type`, `item_class`, and `item_id`, concatenated with colons. e.g. `image:post:db51800e-a0a1-44c8-8fd6-4c3ae238abe6`
+        content:
+          type: string
+          description: Either a string of text or a base64 encoded image
+        user_id:
+          type: string
+          description: Internal FanApp ID of the user creating the content
+        created_at:
+          type: string
+          format: date
+    contentModerationResponsePayload:
+      type: object
+      required:
+        - item_id
+        - item_class
+        - user_id
+        - violations
+      additionalProperties: false
+      properties:
+        item_id:
+          type: string
+          description: The FanApp database id of the content being uploaded
+        item_class:
+          type: string
+          description: For example - `Comment` or `Post`. `content_id` and `content_class` will be used for creating the unique id of the content in ActiveFence.
+        user_id:
+          type: string
+          description: Internal FanApp ID of the user creating the content
+        item_action:
+          type: string
+          description: The action to take against an item of content within FanApp. This action is informed by and in response to the analysis of an item of content against policies by the Trust and Safety analysis platform.
+          enum: ['accept', 'reject', 'in_review']
+        user_action:
+          type: string
+          description: The action to take against a user within FanApp.  This action is informed by and in response to the analysis of user activity against policies by the Trust and Safety analysis platform.
+          enum: ['none', 'ban', 'suspend']
+        violations:
+          type: array
+          description: An array of detected violations from the Trust and Safety analysis platform.  This can be empty for content with no issues, but the array will always be present.
+        errors:
+          type: array
+          description: An array of errors from the Trust and Safety analysis platform.  This key can be absent in the event of an entirely successful processing run.
+
